@@ -1,0 +1,264 @@
+ SSsort plug-in for JQuery
+ Allows sorting of table rows. Inspired somewhat by TINY.table and tablesorter plugins,
+ with emphasis on performance rather than bells-n'-whistles
+ Copyright (C) 2014-2015 Tom Phane
+ Licensed under the GNU Affero GPL v.3 or, at the distributor's discretion, a later version.
+ See http://www.gnu.org/licenses#AGPL.
+
+ Limitations:
+   If table has > 1 tbody, only the first one is processed
+   Single-column sorting
+   No multi-span rows in the table
+   All rows must have the same column-span arrangements
+   All cells in a column must have the same type of content
+   Cells containing multiple elements will sort on the first element only
+
+ Built-in cell-content parsers
+	'text'
+	'number'
+	'isoDate'
+
+ Configuration options:
+
+	sortClass: sortable but unsorted column-header class name, default null
+	ascClass: ascending-sorted column-header class name, default null
+	descClass: descending-sorted column-header class name, default null
+	evenClass: even row class name, default null
+	oddClass: odd row class name, default null
+	evensortClass: even row sorted-column class, default null
+	oddsortClass: odd row sorted-column class, default null
+	firstsort: index of column to be sorted at startup, default null
+	sortdesc: boolean whether to sort descending (on firstsort), default false
+	paginate: boolean whether to paginate the table, default false
+	pagesize: no. of displayed rows per page, default 20
+	currentid: id of DOM element displaying current page no., default null
+	countid: id of DOM element displaying total pages count, default null
+	onSorted: function called after a sort is completed, default null
+
+ Other ways to control behaviour:
+
+  Apply class "nosort" to each th node whose column is not sortable
+  
+  If the jQuery metadata plugin is available, add a pseudo-class to relevant th
+  nodes, like "{sss:'parserid'}" (note the quoted parser id) which will override
+  the auto-detection mechanism, or "{sss:false}" to prevent sorting that column.
+
+  Change default parameter(s) using code like
+  $.SSsort.defaults.sortClass = 'sortable';
+
+  Add parser(s) using $.SSsort.addParser. Each parser an object, like:
+	{	id: 'my-unique-identifier',
+		is: function (args) { check whether this parser can be used for this column, return true/false },
+		watch: optional boolean, whether to watch for any change of sorted-column
+		  value(s), and then if detected, re-read all that column's values before re-sorting
+		format: function (args) { return a value for use in comparing rows },
+		type: 'text' or 'numeric' specifies how to compare the results from format func
+	}
+  Each parser's is() and format() must have at least one argument, representing a
+  DOM-node-content string. They may have up to two more arguments, representing:
+	the DOM-node whose content is the 1st argument,
+	the current config-data object
+
+  Here are some example parsers:
+	 {	id: 'itext',
+		is: function (s) { return true; },
+		format: function (s) { return $.toLocaleLowerCase($.trim(s)); },
+		type: 'text'
+	 }
+
+	 {  id: 'textinput',
+		is: function(s,node) {
+			var n = node.childNodes[0];
+			return (n && n.nodeName.toLowerCase() == 'input' && n.type.toLowerCase() == 'text'));
+		},
+		watch: true,
+		format: function(s,node) {
+			return $.trim(node.childNodes[0].value);
+		},
+		type: 'text'
+	 }
+
+	 For this one, remove the space betweeen '*' and '/' in the format function
+	 {	id: 'money',
+		is: function (s) {
+			var p = /^.{0,2}[$€¥£ƒ₹₪₩฿] *\d/;
+			return p.test(s);
+		},
+		format: function (s) {
+			return $.SSsort.formatFloat(s.replace(/^.{0,2}[$€¥£ƒ₹₪₩฿] * /,''));
+		},
+		type: 'numeric'
+	 }
+
+	 {	id: 'percent',
+		is: function (s) {
+			var p = /\.?\d+ *% *$/;
+			return p.test(s);
+		},
+		format: function (s) {
+			return $.SSsort.formatFloat(s.replace(/ %/g,'');
+		},
+		type: 'numeric'
+	 }
+
+	 {	id: 'ipAddress',
+		is: function (s) {
+			var p = /^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/;
+			return p.test(s);
+		},
+		format: function (s) {
+			var a = s.split('.'),
+				l = a.length,
+				r = '';
+			for (var i = 0; i < l; i++) {
+				var item = a[i];
+				switch (item.length) {
+				 case 1:
+					r += '00' + item;
+					break;
+				 case 2:
+					r += '0' + item;
+					break;
+				 default:
+					r += item;
+				}
+			}
+			return $.SSsort.formatInt(r);
+		},
+		type: 'numeric'
+	 }
+
+	 {	id: 'url',
+		is: function (s) {
+			var p = /^(https?|s?ftp|file):\/\//;
+			return p.test(s);
+		},
+		format: function (s) {
+			return $.trim(s.replace(/(https?|s?ftp|file):\/\//),'');
+		},
+		type: 'text'
+	 }
+
+	 {	id: 'usLongDate',
+		is: function (s) {
+			var p = /^[ADFJMNOS][a-z]{2,9} +[0-3]?\d, +([12]\d{3}|\d{2}) +[0-2]?\d( *: *[0-5]\d){1,2}( *[apAP][mM])?$/;
+			return p.test(s);
+		},
+		format: function (s) { return Date.parse(s); },
+		type: 'numeric'
+	 }
+	 For this one, include
+		dateFormat:'us' or whatever
+	 among the initialisation options
+	 {	id: 'shortDate',
+		is: function (s) {
+			var p = /\d{1,2} *[\/\-] *\d{1,2} *[\/\-] *(\d{2}|[12]\d{3})/;
+			return p.test(s);
+		},
+		format: function (s, node, cfg) {
+			// re-format the string per ISO
+			switch (cfg.dateFormat) {
+			 case 'us':
+				s = s.replace(/(\d{1,2}) *[\/\-] *(\d{1,2}) *[\/\-] *(\d{4})/, "$3/$1/$2");
+				break;
+			 case 'mm/dd/yy':
+				s = s.replace(/(\d{1,2}) *\/ *(\d{1,2}) *\/ *(\d{2})/, "20$3/$1/$2");
+				break;
+			 case 'uk':
+				s = s.replace(/(\d{1,2}) *[\/\-] *(\d{1,2}) *[\/\-] *(\d{4})/, "$3/$2/$1");
+				break;
+			 case 'dd-mm-yy':
+				s = s.replace(/(\d{1,2}) *- *(\d{1,2}) *- *(\d{2})/, "20$3/$2/$1");
+				break;
+			 default:
+				return s;
+			}
+			return Date.parse(s);
+		},
+		type: 'numeric'
+	 }
+
+	 {	id: 'time',
+		is: function (s) {
+			var p = /^((0?[1-9]|1[012])( *: *[0-5]\d){0,2} *[apAP][mM]|([01]\d|2[0-3])( *: *[0-5]\d){0,2})$/;
+			return p.test(s);
+		},
+		format: function (s) {
+			return Date.parse('2000/01/01 ' + s);
+		},
+		type: 'numeric'
+	 }
+	 
+	 {	id: 'checked',
+		is: function(s,node) {
+			var n = node.childNodes[0];
+			return (n && n.nodeName.toLowerCase() == 'input' && n.type.toLowerCase() == 'checkbox');
+		},
+		watch: true,
+		format: function(s,node) {
+			return (node.childNodes[0].value == 'checked');
+		},
+		type: 'numeric'
+	 }
+	 For this one, the jQuery metadata plugin must be available, and you may include
+	 	parserMetadataName: whatever
+	 among the initialisation options
+	 {	id: 'metadata',
+		is: function (s) { return false; },
+		format: function (s, node, cfg) {
+			var p = (cfg.parserMetadataName) ? cfg.parserMetadataName : 'sss';
+			var v = $(node).metadata()[p];
+			if (!v) { //or if numeric, v : Number.POSITIVE_INFINITY
+				v = String.fromCharCode(255);
+				v = v + v + v;
+			}
+			return v;
+		},
+		type: 'text' //or 'numeric' if relevant
+	 }
+
+ Other things to do:
+
+  If pagination is happening, deploy DOM objects with ID currentid and countid
+  Deploy DOM objects whose activation hooks into $.SSsort.movePage()
+
+  Listen for and respond to signals 'beforetablesort' and/or 'aftertablesort'
+  on the table. Each provides a data object like
+	{column: int, direction: boolean }
+  where column is a 0-based index, direction is true for descending sort
+
+ Public methods:
+
+  $.SSsort.movePage (table,down,end)
+    Show a different page of table rows
+	  table = a DOM table element
+      down = boolean, down or up direction
+      end = boolean, true to go to first last page, false to go to next page
+  $.SSsort.mapTable (table)
+    Get a map (object) of the contents of table
+  $.SSsort.addParser (parser)
+  $.SSsort.formatFloat (string)
+    Convert string to float, Number.NEGATIVE_INFINITY if problem happens
+  $.SSsort.formatInt (string)
+    Convert string to integer, Number.NEGATIVE_INFINITY if problem happens
+
+ Problems:
+ sorted-column-content-change watching not yet implemented
+ chaining to another parser not yet implemented e.g.
+	 {	id: 'input',
+		is: function (s, cell, ... [parser]) {
+			var n = cell.childNodes[0];
+			if(n && n.nodeName.toLowerCase() == 'input' && n.type.toLowerCase() == 'text') {
+				return [parser].is(...); 
+			} else {
+				return false;
+			}
+		},
+		format: function (s, cell, ... [parser]) {
+			return [parser].format(...);
+		},
+		type: 'parser'
+	 }
+
+ Version history:
+   0.2 Initial release April 2014
