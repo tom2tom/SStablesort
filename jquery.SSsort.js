@@ -1,10 +1,13 @@
-/**
- SSsort plug-in for JQuery
+/*!
+SSsort table-sorter plug-in for JQuery
+Version 0.2
+Copyright (C) 2014-2015 Tom Phane
+Licensed under the GNU Affero GPL v.3 or, at the distributor's discretion, a later version.
+See http://www.gnu.org/licenses#AGPL.
+*/
+/*
  Allows sorting of table rows. Inspired somewhat by TINY.table and tablesorter plugins,
  with emphasis on performance rather than bells-n'-whistles
- Copyright (C) 2014 Tom Phane
- Licensed under the GNU Affero GPL v.3 or, at the distributor's discretion, a later version.
- See http://www.gnu.org/licenses#AGPL.
 
  Limitations:
    If table has > 1 tbody, only the first one is processed
@@ -263,7 +266,6 @@
 
  Version history:
    0.2 Initial release April 2014
-
 */
 
 (function($) {
