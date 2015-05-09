@@ -1,13 +1,13 @@
 /*!
-SSsort table-sorter plug-in for JQuery
-Version 0.2
+SSsort table-sorter/pager plug-in for JQuery
+Version 0.3
 Copyright (C) 2014-2015 Tom Phane
 Licensed under the GNU Affero GPL v.3 or, at the distributor's discretion, a later version.
 See http://www.gnu.org/licenses#AGPL.
 */
 /*
- Allows sorting of table rows. Inspired somewhat by TINY.table and tablesorter plugins,
- with emphasis on performance rather than bells-n'-whistles
+ Allows sorting and paging of table rows. Inspired somewhat by TINY.table and
+ tablesorter plugins, with emphasis on performance rather than bells-n'-whistles
 
  Limitations:
    If table has > 1 tbody, only the first one is processed
@@ -63,7 +63,7 @@ See http://www.gnu.org/licenses#AGPL.
 	the DOM-node whose content is the 1st argument,
 	the current config-data object
 
-  Here are some examples:
+  Here are some example parsers:
 	 {	id: 'itext',
 		is: function (s) { return true; },
 		format: function (s) { return $.toLocaleLowerCase($.trim(s)); },
@@ -238,6 +238,8 @@ See http://www.gnu.org/licenses#AGPL.
 	  table = a DOM table element
       down = boolean, down or up direction
       end = boolean, true to go to first last page, false to go to next page
+  $.SSsort.setCurrent (table,propname,propvalue)
+    Change a current property e.g. pagesize
   $.SSsort.mapTable (table)
     Get a map (object) of the contents of table
   $.SSsort.addParser (parser)
@@ -266,6 +268,7 @@ See http://www.gnu.org/licenses#AGPL.
 
  Version history:
    0.2 Initial release April 2014
+   0.3 Support runtime property changes May 2015
 */
 
 (function($) {
@@ -279,11 +282,20 @@ See http://www.gnu.org/licenses#AGPL.
 	}
 
 	function showPage (firstrow, cfg) {
+		var ps = parseInt(cfg.pagesize,10);
 		if (cfg.currentid) {
+			if (ps < 1) {
+				cfg.currentpage = 1;
+			} else {
+				cfg.currentpage = ((firstrow/ps) | 0) + 1;
+			}
 			$('#'+cfg.currentid).html(cfg.currentpage);
 		}
-		var last = firstrow + parseInt(cfg.pagesize,10);
 		var rows = cfg.rows;
+		if (ps < 1) {
+			ps = rows.length + 1;
+		}
+		var last = firstrow + ps;
 		for (var i = 0; i < rows.length; i++) {
 			rows[i].style.display = (i >= firstrow && i < last) ? '':'none';
 		}
@@ -694,6 +706,18 @@ See http://www.gnu.org/licenses#AGPL.
 			if (newpage > 0 && newpage <= cfg.pagecount) {
 				cfg.currentpage = newpage;
 				showPage ((newpage-1) * cfg.pagesize, cfg);
+			}
+		}
+	};
+
+	this.setCurrent = function (table,propname,propvalue) {
+		var cfg = $.data (table, 'SSsortcfg');
+		if (cfg) {
+			cfg[propname] = propvalue;
+			showPage (0, cfg);
+			if (cfg.countid) {
+				pageCount (cfg);
+				$('#'+cfg.countid).html(cfg.pagecount);
 			}
 		}
 	};

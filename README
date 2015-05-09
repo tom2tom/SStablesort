@@ -1,6 +1,6 @@
  SSsort plug-in for JQuery
- Allows sorting of table rows. Inspired somewhat by TINY.table and tablesorter plugins,
- with emphasis on performance rather than bells-n'-whistles
+ Allows sorting and paging  of table rows. Inspired somewhat by TINY.table and
+ tablesorter plugins, with emphasis on performance rather than bells-n'-whistles
  Copyright (C) 2014-2015 Tom Phane
  Licensed under the GNU Affero GPL v.3 or, at the distributor's discretion, a later version.
  See http://www.gnu.org/licenses#AGPL.
@@ -234,6 +234,8 @@
 	  table = a DOM table element
       down = boolean, down or up direction
       end = boolean, true to go to first last page, false to go to next page
+  $.SSsort.setCurrent (table,propname,propvalue)
+    Change a current property e.g. pagesize
   $.SSsort.mapTable (table)
     Get a map (object) of the contents of table
   $.SSsort.addParser (parser)
@@ -262,3 +264,5 @@
 
  Version history:
    0.2 Initial release April 2014
+   0.3 Support runtime property changes May 2015
+
