@@ -271,7 +271,7 @@ See http://www.gnu.org/licenses#AGPL.
    0.3 Support runtime property changes May 2015
 */
 
-(function($) {
+(function($) { "$:nomunge";
  $.extend({
   SSsort: new function () {
 
