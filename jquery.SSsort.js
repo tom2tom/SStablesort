@@ -1,6 +1,6 @@
 /*!
 SSsort table-sorter/pager plug-in for JQuery
-Version 0.3
+Version 0.4
 Copyright (C) 2014-2015 Tom Phane
 Licensed under the GNU Affero GPL v.3 or, at the distributor's discretion, a later version.
 See http://www.gnu.org/licenses#AGPL.
@@ -42,7 +42,7 @@ See http://www.gnu.org/licenses#AGPL.
  Other ways to control behaviour:
 
   Apply class "nosort" to each th node whose column is not sortable
-  
+
   If the jQuery metadata plugin is available, add a pseudo-class to relevant th
   nodes, like "{sss:'parserid'}" (note the quoted parser id) which will override
   the auto-detection mechanism, or "{sss:false}" to prevent sorting that column.
@@ -192,7 +192,7 @@ See http://www.gnu.org/licenses#AGPL.
 		},
 		type: 'numeric'
 	 }
-	 
+
 	 {	id: 'checked',
 		is: function(s,node) {
 			var n = node.childNodes[0];
@@ -255,7 +255,7 @@ See http://www.gnu.org/licenses#AGPL.
 		is: function (s, cell, ... [parser]) {
 			var n = cell.childNodes[0];
 			if(n && n.nodeName.toLowerCase() == 'input' && n.type.toLowerCase() == 'text') {
-				return [parser].is(...); 
+				return [parser].is(...);
 			} else {
 				return false;
 			}
@@ -269,6 +269,7 @@ See http://www.gnu.org/licenses#AGPL.
  Version history:
    0.2 Initial release April 2014
    0.3 Support runtime property changes May 2015
+   0.4 revise processing of {sss:false}
 */
 
 (function($) { "$:nomunge";
@@ -510,7 +511,7 @@ See http://www.gnu.org/licenses#AGPL.
 			rowIndex = 0,
 			row;
 		while (value === false) {
-			row = rows[rowIndex]; 
+			row = rows[rowIndex];
 			if (row) {
 				node = row.cells[colIndex];
 				value = $.trim(getNodeText(node));
@@ -655,10 +656,17 @@ See http://www.gnu.org/licenses#AGPL.
 			cfg.rows = cfg.body[0].rows; //ignore bodies after 1st!
 			var $cells = cfg.header.find('tr:first > th');
 			var vers = $.fn.jquery;
+			var meta = $.metadata;
 			var col = 0;
 			$cells.each(function (){
 				var $cell = $(this);
-				if (!$cell.hasClass('nosort')) {
+				var skip = $cell.hasClass('nosort');
+				if (!skip && meta) {
+					if ($cell.metadata().sss === false) { //sss is our metadata key
+						skip = true;
+					}
+				}
+				if (!skip) {
 					var parser = getParser(this,cfg);
 					if (parser) {
 						cfg.works[col] = {
@@ -682,10 +690,16 @@ See http://www.gnu.org/licenses#AGPL.
 
 			if (cfg.firstsort !== null) {
 				$cell = $cells.eq(cfg.firstsort-1);
-				if (!$cell.hasClass('nosort')) {
-					$cell.trigger('click'); //the sort will be async
-				} else {
+				skip = $cell.hasClass('nosort');
+				if (!skip && meta) {
+					if ($cell.metadata().sss === false) { //sss is our metadata key
+						skip = true;
+					}
+				}
+				if (skip) {
 					cfg.firstsort = null;
+				} else {
+					$cell.trigger('click'); //the sort will be async
 				}
 			}
 			if (cfg.firstsort === null && cfg.paginate) {
@@ -738,7 +752,7 @@ See http://www.gnu.org/licenses#AGPL.
 				var cid = this.atgetAttribute('id') || this.getAttribute('name') || 'col'+ctr;
 				switch (all.length) {
 				 case 0:
-				  row[cid] = '<empty>'; 
+				  row[cid] = '<empty>';
 				  break;
 				 case 1:
 				  row[cid] = all[0];
