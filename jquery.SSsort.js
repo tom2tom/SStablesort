@@ -269,7 +269,7 @@ See http://www.gnu.org/licenses#AGPL.
  Version history:
    0.2 Initial release April 2014
    0.3 Support runtime property changes May 2015
-   0.4 revise processing of {sss:false}
+   0.4 revise processing of {sss:false}, support >1 table per page July 2016
 */
 
 (function($) { "$:nomunge";
@@ -343,7 +343,8 @@ See http://www.gnu.org/licenses#AGPL.
 	}
 
 	function doSort (ev) {
-		var cfg = ev.data;
+		var $tbl = $(this).closest('table');
+		var cfg = $.data ($tbl[0], 'SSsortcfg');
 		if (cfg.rows.length < 2) {return;}
 		var l = this.cellIndex;
 		var $cells = cfg.header.find('tr:first > th');
@@ -646,14 +647,13 @@ See http://www.gnu.org/licenses#AGPL.
 			works: []
 		};
 		this.each (function () {
-			var cfg = {};
-			$.extend (cfg, common, $.SSsort.defaults, options || {});
-			$.data (this, 'SSsortcfg', cfg); //make config data generally available
+			var cfg = $.extend ({}, common, $.SSsort.defaults, options || {});
 			cfg.table = this;
 			var $this = $(this);
 			cfg.header = $this.children('thead');
 			cfg.body = $this.children('tbody');
 			cfg.rows = cfg.body[0].rows; //ignore bodies after 1st!
+			cfg.works = [];
 			var $cells = cfg.header.find('tr:first > th');
 			var vers = $.fn.jquery;
 			var meta = $.metadata;
@@ -679,14 +679,16 @@ See http://www.gnu.org/licenses#AGPL.
 						}
 						//process header-clicks even if 0-1 rows, in case more added later
 						if (vers >= '1.7') {
-							$cell.on('click.sss',cfg,doSort);
+							$cell.on('click',doSort);
 						} else {
-							$cell.bind('click.sss',cfg,doSort);
+							$cell.bind('click',doSort);
 						}
 					}
 				}
 				col++;
 			});
+
+			$.data (this, 'SSsortcfg', cfg); //make config data generally available
 
 			if (cfg.firstsort !== null) {
 				$cell = $cells.eq(cfg.firstsort-1);
